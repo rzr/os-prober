@@ -106,7 +106,7 @@ item_in_dir () {
 # We can't always tell the filesystem type up front, but if we have the
 # information then we should use it. Note that we can't use block-attr here
 # as it's only available in udebs.
-fs_type () {
+tell_fs_type () {
 	if (export PATH="/lib/udev:$PATH"; type vol_id) >/dev/null 2>&1; then
 		PATH="/lib/udev:$PATH" vol_id --type "$1" 2>/dev/null
 	elif type blkid >/dev/null 2>&1; then
@@ -114,6 +114,19 @@ fs_type () {
 	else
 		return 0
 	fi
+}
+
+# Try to tell filesystem but if not detected
+# make sure it's not an extended msdos partition
+fs_type () {
+	fs_type=$(tell_fs_type -- "$1" || return $?)
+	if [ -z "$fs_type" ] ; then
+		if type lsblk >/dev/null 2>&1; then
+			local parttype=$(lsblk --nodeps --noheading --output PARTTYPE -- "$1" 2>/dev/null)
+			[ "$parttype" != 0x5 ] || return 5;
+		fi
+	fi
+	echo "$fs_type"
 }
 
 parse_proc_mounts () {
