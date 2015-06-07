@@ -5,7 +5,7 @@ partition="$1"
 
 . /usr/share/os-prober/common.sh
 
-types="$(fs_type "$partition")"
+types="$(fs_type "$partition")" || types=NOT-DETECTED
 if [ "$types" = NOT-DETECTED ]; then
 	debug "$1 type not recognised; skipping"
 	exit 0
