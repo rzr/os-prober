@@ -106,14 +106,27 @@ item_in_dir () {
 # We can't always tell the filesystem type up front, but if we have the
 # information then we should use it. Note that we can't use block-attr here
 # as it's only available in udebs.
+# If not detected after different attempts then "NOT-DETECTED" will be printed
+# because function is not supposed to exit error codes.
 fs_type () {
+	local fstype=""
 	if (export PATH="/lib/udev:$PATH"; type vol_id) >/dev/null 2>&1; then
-		PATH="/lib/udev:$PATH" vol_id --type "$1" 2>/dev/null
-	elif type blkid >/dev/null 2>&1; then
-		blkid -o value -s TYPE "$1" 2>/dev/null
-	else
-		return 0
+		PATH="/lib/udev:$PATH" \
+			fstype=$(vol_id --type "$1" 2>/dev/null \
+			|| echo "")
+		[ "$fstype" = "" ] || { echo "$fstype" ; return 0; }
 	fi
+	if type lsblk >/dev/null 2>&1 ; then
+		fstype=$(lsblk --nodeps --noheading --output fstype -- "$1" || echo "")
+		[ "$fstype" = "" ] || { echo "$fstype" ; return 0; }
+	fi
+	if type blkid >/dev/null 2>&1; then
+		fstype=$(blkid -o value -s TYPE "$1" 2>/dev/null \
+		|| echo "")
+		[ "$fstype" = "" ] || { echo "$fstype" ; return 0; }
+	fi
+	echo "NOT-DETECTED"
+	return 0
 }
 
 parse_proc_mounts () {
